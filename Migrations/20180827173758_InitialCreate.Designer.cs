@@ -6,11 +6,11 @@ using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using webapi.Entities;
 
-namespace webapi.Migrations.ApplicationDb
+namespace webapi.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    [Migration("20180827172535_x")]
-    partial class x
+    [Migration("20180827173758_InitialCreate")]
+    partial class InitialCreate
     {
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {

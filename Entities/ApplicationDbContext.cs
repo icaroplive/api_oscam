@@ -5,6 +5,7 @@ using System.Threading.Tasks;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Migrations;
 using webapi.Models;
 
 namespace webapi.Entities
@@ -21,6 +22,7 @@ namespace webapi.Entities
         {
             base.OnModelCreating(builder);
             // Shorten key length for Identity
+
             builder.Entity<IdentityUser>(entity =>
             {
                 entity.Property(m => m.Email).HasMaxLength(127);
