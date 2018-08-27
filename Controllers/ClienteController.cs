@@ -49,6 +49,7 @@ namespace webapi
         [HttpPost]
         public IActionResult Post([FromBody]Cliente value)
         {
+            var transaction = db.Database.BeginTransaction();
             value.idUser = UserId;
             var reg = db.Cliente.SingleOrDefault(x => x.login == value.login);
 
@@ -56,13 +57,17 @@ namespace webapi
             {
                 return StatusCode(404, Json(new { error = "Login indisponível" }));
             }
-            int result=Oscam.criarUsuarioAsync(value.login,value.senha,value.nome).Result;
-            if (result != 200)  return StatusCode(404,Json(new { error = "Falha ao comunicar com o servidor, contate o Administrador"}));
+
             value.dataCriado = DateTime.Now;
             db.Cliente.Add(value);
             db.SaveChanges();
 
             var revendedor = db.Revendedor.SingleOrDefault(x => x.idUser == UserId);
+            if (revendedor == null)
+            {
+                transaction.Rollback();
+                return StatusCode(404, Json(new { error = "Você nao possui perfil de revendedor, contate o Administrador" }));
+            }
             //inicio financeiro
             Financeiro financeiro = new Financeiro();
             financeiro.idCliente = value.id;
@@ -73,10 +78,19 @@ namespace webapi
             financeiro.dataVencimento = Convert.ToDateTime(string.Format("{0}-{1}-{2}", DateTime.Now.Year, DateTime.Now.AddMonths(DateTime.Now.Date.Day >= revendedor.diaVencimento ? 1 : 0).Month, revendedor.diaVencimento));
 
             var xp = Math.Round((Convert.ToDateTime(financeiro.dataVencimento).Date - DateTime.Now).TotalDays);
-            
-            financeiro.valorLogin=Decimal.Round((revendedor.valorLogin / 30) * Convert.ToDecimal(xp),2,MidpointRounding.AwayFromZero);
+
+            financeiro.valorLogin = Decimal.Round((revendedor.valorLogin / 30) * Convert.ToDecimal(xp), 2, MidpointRounding.AwayFromZero);
             db.Financeiro.Add(financeiro);
             db.SaveChanges();
+
+            int result = Oscam.criarUsuarioAsync(value.login, value.senha, value.nome, Convert.ToInt16(value.ativo)).Result;
+            if (result != 200)
+            {
+                transaction.Rollback();
+                return StatusCode(404, Json(new { error = "Falha ao comunicar com servidor CAM, contate o Administrador" }));
+            };
+
+            transaction.Commit();
             //fim financeiro
             return Json(value);
         }
@@ -100,6 +114,12 @@ namespace webapi
             {
                 return StatusCode(404, Json(new { error = "Login não pode ser alterado" }));
             }
+            int result = Oscam.criarUsuarioAsync(value.login, value.senha, value.nome, Convert.ToInt16(value.ativo)).Result;
+            if (result != 200)
+            {
+                return StatusCode(404, Json(new { error = "Falha ao comunicar com servidor CAM, contate o Administrador" }));
+            };
+
             db.Entry(cliente).State = EntityState.Detached;
             db.Cliente.Update(value);
             db.SaveChanges();
@@ -117,6 +137,11 @@ namespace webapi
             }
             if (reg != null)
             {
+                int result = Oscam.deleteAsync(reg.login).Result;
+                if (result != 200)
+                {
+                    return StatusCode(404, Json(new { error = "Falha ao comunicar com servidor CAM, contate o Administrador" }));
+                };
                 // db.Cliente.Remove(reg);
                 reg.ativo = false;
                 reg.apagado = true;

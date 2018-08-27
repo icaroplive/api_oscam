@@ -13,7 +13,7 @@ using Microsoft.IdentityModel.Tokens;
 
 namespace webapi.Controllers
 {
-    [Route("[controller]/[action]")]
+    [Route("api/[controller]/[action]")]
     public class AccountController : Controller
     {
         private readonly SignInManager<IdentityUser> _signInManager;
