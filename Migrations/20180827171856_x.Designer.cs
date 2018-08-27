@@ -6,17 +6,17 @@ using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using webapi.Entities;
 
-namespace webapi.Migrations.Banco
+namespace webapi.Migrations
 {
     [DbContext(typeof(BancoContext))]
-    [Migration("20180822194902_foreingkey")]
-    partial class foreingkey
+    [Migration("20180827171856_x")]
+    partial class x
     {
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
-                .HasAnnotation("ProductVersion", "2.1.1-rtm-30846")
+                .HasAnnotation("ProductVersion", "2.1.2-rtm-30932")
                 .HasAnnotation("Relational:MaxIdentifierLength", 64);
 
             modelBuilder.Entity("webapi.Models.Cliente", b =>
@@ -24,11 +24,13 @@ namespace webapi.Migrations.Banco
                     b.Property<Guid>("id")
                         .ValueGeneratedOnAdd();
 
+                    b.Property<bool>("apagado");
+
                     b.Property<bool>("ativo");
 
-                    b.Property<DateTime>("dataCriado");
+                    b.Property<DateTime?>("dataApagado");
 
-                    b.Property<int>("diaVencimento");
+                    b.Property<DateTime>("dataCriado");
 
                     b.Property<string>("email");
 
@@ -54,7 +56,11 @@ namespace webapi.Migrations.Banco
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd();
 
-                    b.Property<DateTime?>("dataBaixa");
+                    b.Property<bool>("apagado");
+
+                    b.Property<DateTime?>("dataBaixaCliente");
+
+                    b.Property<DateTime?>("dataBaixaRevendedor");
 
                     b.Property<DateTime>("dataLancamento");
 
@@ -64,7 +70,9 @@ namespace webapi.Migrations.Banco
 
                     b.Property<Guid>("idUser");
 
-                    b.Property<int>("origemPagamento");
+                    b.Property<int>("origemPagamentoCliente");
+
+                    b.Property<int>("origemPagamentoRevendedor");
 
                     b.Property<decimal>("valorCobrado");
 
@@ -101,6 +109,8 @@ namespace webapi.Migrations.Banco
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd();
+
+                    b.Property<int>("diaVencimento");
 
                     b.Property<string>("emailPagseguro");
 

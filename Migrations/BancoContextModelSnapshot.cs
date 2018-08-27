@@ -5,7 +5,7 @@ using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using webapi.Entities;
 
-namespace webapi.Migrations.Banco
+namespace webapi.Migrations
 {
     [DbContext(typeof(BancoContext))]
     partial class BancoContextModelSnapshot : ModelSnapshot
