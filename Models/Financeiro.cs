@@ -14,7 +14,7 @@ namespace webapi.Models
         public Guid idUser { get; set; }
         public decimal valorCobrado { get; set; }
         public decimal valorLogin { get; set; }
-        public DateTime? dataVencimento { get; set; }
+        public DateTime dataVencimento { get; set; }
         public DateTime? dataBaixaCliente { get; set; }
         public DateTime? dataBaixaRevendedor { get; set; }
         public DateTime dataLancamento { get; set; }

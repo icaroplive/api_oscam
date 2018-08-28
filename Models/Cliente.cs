@@ -20,6 +20,7 @@ namespace webapi.Models
         public bool ativo { get; set; }
         public bool apagado { get; set; }
         public DateTime? dataApagado { get; set; }
+        public bool teste { get; set; }    
         
     }
 }

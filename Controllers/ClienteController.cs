@@ -6,6 +6,7 @@ using System.Security.Claims;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using webapi.Entities;
@@ -18,6 +19,7 @@ namespace webapi
     [Route("api/Cliente")]
     public class ClienteController : Controller
     {
+        private readonly UserManager<IdentityUser> _userManager;
         private BancoContext db;
         protected ClaimsIdentity ClaimsIdentity => User.Identity as ClaimsIdentity;
         protected Guid UserId => new Guid(ClaimsIdentity.FindFirst(ClaimTypes.NameIdentifier)?.Value.ToString());
@@ -57,7 +59,6 @@ namespace webapi
             {
                 return StatusCode(404, Json(new { error = "Login indisponível" }));
             }
-
             value.dataCriado = DateTime.Now;
             db.Cliente.Add(value);
             db.SaveChanges();
@@ -69,17 +70,17 @@ namespace webapi
                 return StatusCode(404, Json(new { error = "Você nao possui perfil de revendedor, contate o Administrador" }));
             }
             //inicio financeiro
+
             Financeiro financeiro = new Financeiro();
             financeiro.idCliente = value.id;
             financeiro.idUser = UserId;
-            financeiro.valorLogin = revendedor.valorLogin;
-            financeiro.valorCobrado = value.valorCobrado;
+            financeiro.valorCobrado = value.teste ? 0 : value.valorCobrado;
             financeiro.dataLancamento = DateTime.Now;
-            financeiro.dataVencimento = Convert.ToDateTime(string.Format("{0}-{1}-{2}", DateTime.Now.Year, DateTime.Now.AddMonths(DateTime.Now.Date.Day >= revendedor.diaVencimento ? 1 : 0).Month, revendedor.diaVencimento));
+            financeiro.dataVencimento = value.teste ? DateTime.Now.AddDays(1) : Convert.ToDateTime(string.Format("{0}-{1}-{2}", DateTime.Now.Year, DateTime.Now.AddMonths(DateTime.Now.Date.Day >= revendedor.diaVencimento ? 1 : 0).Month, revendedor.diaVencimento));
 
             var xp = Math.Round((Convert.ToDateTime(financeiro.dataVencimento).Date - DateTime.Now).TotalDays);
 
-            financeiro.valorLogin = Decimal.Round((revendedor.valorLogin / 30) * Convert.ToDecimal(xp), 2, MidpointRounding.AwayFromZero);
+            financeiro.valorLogin = value.teste ? 0 : Decimal.Round((revendedor.valorLogin / 30) * Convert.ToDecimal(xp), 2, MidpointRounding.AwayFromZero);
             db.Financeiro.Add(financeiro);
             db.SaveChanges();
 
@@ -102,10 +103,17 @@ namespace webapi
             var cliente = db.Cliente.SingleOrDefault(x => x.id == id);
             value.idUser = UserId;
             value.id = id;
+
             if (cliente == null)
             {
                 return StatusCode(404, Json(new { error = "Registro inexistente" }));
             }
+            if (id != null && (!cliente.teste && value.teste))
+            {
+                return StatusCode(404, Json(new { error = "Uma conta ativa não pode ser transformada em teste" }));
+            }
+            //se o cliente for teste e passar a ser cliente ativo, gera cobrança
+
             if (cliente.idUser != UserId)
             {
                 return StatusCode(404, Json(new { error = "Você não tem permissão para alterar esse registro" }));
@@ -113,6 +121,52 @@ namespace webapi
             if (cliente.login != value.login)
             {
                 return StatusCode(404, Json(new { error = "Login não pode ser alterado" }));
+            }
+            var revendedor = db.Revendedor.SingleOrDefault(x => x.idUser == UserId);
+            var data = value.teste ? DateTime.Now.AddDays(1) : Convert.ToDateTime(string.Format("{0}-{1}-{2}", DateTime.Now.Year, DateTime.Now.AddMonths(DateTime.Now.Date.Day >= revendedor.diaVencimento ? 1 : 0).Month, revendedor.diaVencimento));
+            Financeiro financeiro = new Financeiro();
+            financeiro.idCliente = value.id;
+            financeiro.idUser = UserId;
+            financeiro.valorCobrado = value.teste ? 0 : value.valorCobrado;
+            financeiro.dataLancamento = DateTime.Now;
+            financeiro.dataVencimento = data;
+
+            var xp = Math.Round((Convert.ToDateTime(financeiro.dataVencimento).Date - DateTime.Now).TotalDays);
+
+            financeiro.valorLogin = value.teste ? 0 : Decimal.Round((revendedor.valorLogin / 30) * Convert.ToDecimal(xp), 2, MidpointRounding.AwayFromZero);
+            if (cliente.teste && !value.teste)
+            {
+
+                if (revendedor == null)
+                {
+                    return StatusCode(404, Json(new { error = "Você nao possui perfil de revendedor, contate o Administrador" }));
+                }
+
+
+
+                var check = db.Financeiro.Where(x => x.valorLogin == 0 && x.valorCobrado == 0 && x.idCliente == value.id).FirstOrDefault();
+                //verifica se ja tem cobrança para o mês
+                //se não tiver vai adicionar, caso ja tenha, vai atualizar
+                if (check == null)
+                {
+                    db.Financeiro.Add(financeiro);
+                }
+                else
+                {
+                    financeiro.Id = check.Id;
+                    db.Entry(check).State = EntityState.Detached;
+                    db.Financeiro.Update(financeiro);
+                }
+                db.SaveChanges();
+            }
+            if (cliente.ativo == true && value.ativo == false)
+            {
+                var check = db.Financeiro.Where(x => (x.dataVencimento.Month == data.Month) && ( x.dataVencimento.Year == data.Year) && (x.dataVencimento.Year == DateTime.Now.Year) && x.idCliente == value.id).FirstOrDefault();
+                if (check == null)
+                {
+                    db.Financeiro.Add(financeiro);
+                    db.SaveChanges();
+                }
             }
             int result = Oscam.criarUsuarioAsync(value.login, value.senha, value.nome, Convert.ToInt16(value.ativo)).Result;
             if (result != 200)
