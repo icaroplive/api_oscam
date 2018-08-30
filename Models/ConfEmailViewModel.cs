@@ -10,5 +10,6 @@ namespace webapi.Models
         public ModeloEmail ModeloEmail { get; set; }
         public Financeiro Financeiro { get; set; }
         public Cliente cliente { get; set; }
+        public Servidor servidor { get; set; }
     }
 }
