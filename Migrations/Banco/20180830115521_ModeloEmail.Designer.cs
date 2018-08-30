@@ -2,15 +2,17 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using webapi.Entities;
 
 namespace webapi.Migrations.Banco
 {
     [DbContext(typeof(BancoContext))]
-    partial class BancoContextModelSnapshot : ModelSnapshot
+    [Migration("20180830115521_ModeloEmail")]
+    partial class ModeloEmail
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -85,22 +87,6 @@ namespace webapi.Migrations.Banco
                     b.ToTable("Financeiro");
                 });
 
-            modelBuilder.Entity("webapi.Models.LogEventos", b =>
-                {
-                    b.Property<Guid>("id")
-                        .ValueGeneratedOnAdd();
-
-                    b.Property<DateTime>("data");
-
-                    b.Property<Guid>("idUser");
-
-                    b.Property<string>("log");
-
-                    b.HasKey("id");
-
-                    b.ToTable("LogEventos");
-                });
-
             modelBuilder.Entity("webapi.Models.ModeloEmail", b =>
                 {
                     b.Property<Guid>("id")
@@ -166,18 +152,6 @@ namespace webapi.Migrations.Banco
                     b.HasKey("Id");
 
                     b.ToTable("Revendedor");
-                });
-
-            modelBuilder.Entity("webapi.Models.Servidor", b =>
-                {
-                    b.Property<Guid>("id")
-                        .ValueGeneratedOnAdd();
-
-                    b.Property<string>("urlCam");
-
-                    b.HasKey("id");
-
-                    b.ToTable("Servidor");
                 });
 
             modelBuilder.Entity("webapi.Models.Smtp", b =>

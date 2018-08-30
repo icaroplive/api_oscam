@@ -2,15 +2,17 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using webapi.Entities;
 
 namespace webapi.Migrations.Banco
 {
     [DbContext(typeof(BancoContext))]
-    partial class BancoContextModelSnapshot : ModelSnapshot
+    [Migration("20180829123711_MaxLenght")]
+    partial class MaxLenght
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -51,6 +53,30 @@ namespace webapi.Migrations.Banco
                     b.ToTable("Cliente");
                 });
 
+            modelBuilder.Entity("webapi.Models.EmailSmtp", b =>
+                {
+                    b.Property<Guid>("id")
+                        .ValueGeneratedOnAdd();
+
+                    b.Property<Guid?>("Smtpid");
+
+                    b.Property<string>("email")
+                        .HasMaxLength(100);
+
+                    b.Property<Guid>("idSmtp");
+
+                    b.Property<Guid>("idUser");
+
+                    b.Property<string>("senha")
+                        .HasMaxLength(100);
+
+                    b.HasKey("id");
+
+                    b.HasIndex("Smtpid");
+
+                    b.ToTable("EmailSmtp");
+                });
+
             modelBuilder.Entity("webapi.Models.Financeiro", b =>
                 {
                     b.Property<Guid>("Id")
@@ -85,40 +111,6 @@ namespace webapi.Migrations.Banco
                     b.ToTable("Financeiro");
                 });
 
-            modelBuilder.Entity("webapi.Models.LogEventos", b =>
-                {
-                    b.Property<Guid>("id")
-                        .ValueGeneratedOnAdd();
-
-                    b.Property<DateTime>("data");
-
-                    b.Property<Guid>("idUser");
-
-                    b.Property<string>("log");
-
-                    b.HasKey("id");
-
-                    b.ToTable("LogEventos");
-                });
-
-            modelBuilder.Entity("webapi.Models.ModeloEmail", b =>
-                {
-                    b.Property<Guid>("id")
-                        .ValueGeneratedOnAdd();
-
-                    b.Property<string>("corpo");
-
-                    b.Property<string>("tipo")
-                        .HasMaxLength(20);
-
-                    b.Property<string>("titulo")
-                        .HasMaxLength(50);
-
-                    b.HasKey("id");
-
-                    b.ToTable("ModeloEmail");
-                });
-
             modelBuilder.Entity("webapi.Models.PagSeguro", b =>
                 {
                     b.Property<Guid>("Id")
@@ -148,14 +140,7 @@ namespace webapi.Migrations.Banco
 
                     b.Property<string>("emailPagseguro");
 
-                    b.Property<string>("emailSmtp");
-
-                    b.Property<Guid>("idSmtp");
-
                     b.Property<Guid>("idUser");
-
-                    b.Property<string>("senha")
-                        .HasMaxLength(100);
 
                     b.Property<string>("tokenPagseguro");
 
@@ -166,18 +151,6 @@ namespace webapi.Migrations.Banco
                     b.HasKey("Id");
 
                     b.ToTable("Revendedor");
-                });
-
-            modelBuilder.Entity("webapi.Models.Servidor", b =>
-                {
-                    b.Property<Guid>("id")
-                        .ValueGeneratedOnAdd();
-
-                    b.Property<string>("urlCam");
-
-                    b.HasKey("id");
-
-                    b.ToTable("Servidor");
                 });
 
             modelBuilder.Entity("webapi.Models.Smtp", b =>
@@ -191,7 +164,8 @@ namespace webapi.Migrations.Banco
                     b.Property<string>("endereco")
                         .HasMaxLength(100);
 
-                    b.Property<int>("porta");
+                    b.Property<int>("porta")
+                        .HasMaxLength(5);
 
                     b.Property<string>("sslTls")
                         .HasMaxLength(100);
@@ -199,6 +173,13 @@ namespace webapi.Migrations.Banco
                     b.HasKey("id");
 
                     b.ToTable("Smtp");
+                });
+
+            modelBuilder.Entity("webapi.Models.EmailSmtp", b =>
+                {
+                    b.HasOne("webapi.Models.Smtp", "Smtp")
+                        .WithMany()
+                        .HasForeignKey("Smtpid");
                 });
 
             modelBuilder.Entity("webapi.Models.Financeiro", b =>
