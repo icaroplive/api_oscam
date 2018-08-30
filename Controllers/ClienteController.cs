@@ -20,11 +20,13 @@ namespace webapi
     public class ClienteController : Controller
     {
         private BancoContext db;
+        private Servidor servidor;
         protected ClaimsIdentity ClaimsIdentity => User.Identity as ClaimsIdentity;
         protected Guid UserId => new Guid(ClaimsIdentity.FindFirst(ClaimTypes.NameIdentifier)?.Value.ToString());
         public ClienteController(BancoContext db)
         {
             this.db = db;
+            this.servidor = db.Servidor.FirstOrDefault();
         }
         // GET: api/Cliente
         [HttpGet]
@@ -102,7 +104,7 @@ namespace webapi
                         smtp = smtp,
                         cliente = value,
                         Financeiro = financeiro,
-                        servidor = db.Servidor.FirstOrDefault()
+                        servidor = servidor
                     });
                     if (tmp.sucesso == false) {
                         db.LogEventos.Add(new LogEventos { idUser= UserId, data = DateTime.Now, log = tmp.retorno});
@@ -188,7 +190,7 @@ namespace webapi
                     db.SaveChanges();
                 }
             }
-            int result = Oscam.criarUsuarioAsync(value.login, value.senha, value.nome, Convert.ToInt16(value.ativo)).Result;
+            int result = Oscam.criarUsuarioAsync(value.login, value.senha, value.nome, Convert.ToInt16(value.ativo).servidor).Result;
             if (result != 200)
             {
                 return StatusCode(404, Json(new { error = "Falha ao comunicar com servidor CAM, contate o Administrador" }));
@@ -211,7 +213,7 @@ namespace webapi
             }
             if (reg != null)
             {
-                int result = Oscam.deleteAsync(reg.login).Result;
+                int result = Oscam.deleteAsync(reg.login,servidor).Result;
                 if (result != 200)
                 {
                     return StatusCode(404, Json(new { error = "Falha ao comunicar com servidor CAM, contate o Administrador" }));
