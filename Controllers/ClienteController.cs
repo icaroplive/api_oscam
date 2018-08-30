@@ -19,7 +19,6 @@ namespace webapi
     [Route("api/Cliente")]
     public class ClienteController : Controller
     {
-        private readonly UserManager<IdentityUser> _userManager;
         private BancoContext db;
         protected ClaimsIdentity ClaimsIdentity => User.Identity as ClaimsIdentity;
         protected Guid UserId => new Guid(ClaimsIdentity.FindFirst(ClaimTypes.NameIdentifier)?.Value.ToString());
@@ -64,6 +63,8 @@ namespace webapi
             db.SaveChanges();
 
             var revendedor = db.Revendedor.SingleOrDefault(x => x.idUser == UserId);
+            var smtp = db.Smtp.SingleOrDefault(x => x.id == revendedor.idSmtp);
+            
             if (revendedor == null)
             {
                 transaction.Rollback();
@@ -92,6 +93,25 @@ namespace webapi
             };
 
             transaction.Commit();
+            if (smtp != null) {
+                var modeloemail = db.ModeloEmail.SingleOrDefault(x => x.tipo == (financeiro.valorLogin == 0 ? "ContaTeste" : "ContaAtiva"));
+                if (modeloemail != null) {
+                  var tmp =  SendMail.Send(new ConfEmailViewModel { 
+                        ModeloEmail = modeloemail,
+                        revendedor = revendedor,
+                        smtp = smtp,
+                        cliente = value,
+                        Financeiro = financeiro,
+                        servidor = db.Servidor.FirstOrDefault()
+                    });
+                    if (tmp.sucesso == false) {
+                        db.LogEventos.Add(new LogEventos { idUser= UserId, data = DateTime.Now, log = tmp.retorno});
+                        db.SaveChanges();
+                        
+                    }
+                }
+            }
+
             //fim financeiro
             return Json(value);
         }
