@@ -13,7 +13,9 @@ namespace webapi.Entities
         public DbSet<PagSeguro> PagSeguro { get; set; }
         public DbSet<Revendedor> Revendedor { get; set; }
         public DbSet<Smtp> Smtp { get; set; }
-        public DbSet<EmailSmtp> EmailSmtp { get; set; }
+        public DbSet<ModeloEmail> ModeloEmail { get; set; }
+        public DbSet<Servidor> Servidor { get; set; }
+        public DbSet<LogEventos> LogEventos { get; set; }
         
     }
 }
