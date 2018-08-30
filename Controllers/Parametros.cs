@@ -30,7 +30,6 @@ namespace webapi
         [HttpGet]
         public IActionResult Get()
         {
-            SmtpResponse response = SendMail.Send();
             return Json(db.Revendedor.FirstOrDefault(c => c.idUser == UserId));
         }
 
