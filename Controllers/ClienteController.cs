@@ -87,7 +87,7 @@ namespace webapi
             db.Financeiro.Add(financeiro);
             db.SaveChanges();
 
-            int result = Oscam.criarUsuarioAsync(value.login, value.senha, value.nome, Convert.ToInt16(value.ativo)).Result;
+            int result = Oscam.criarUsuarioAsync(value.login, value.senha, value.nome,servidor, Convert.ToInt16(value.ativo)).Result;
             if (result != 200)
             {
                 transaction.Rollback();
@@ -190,7 +190,7 @@ namespace webapi
                     db.SaveChanges();
                 }
             }
-            int result = Oscam.criarUsuarioAsync(value.login, value.senha, value.nome, Convert.ToInt16(value.ativo).servidor).Result;
+            int result = Oscam.criarUsuarioAsync(value.login, value.senha, value.nome, servidor,Convert.ToInt16(value.ativo)).Result;
             if (result != 200)
             {
                 return StatusCode(404, Json(new { error = "Falha ao comunicar com servidor CAM, contate o Administrador" }));
