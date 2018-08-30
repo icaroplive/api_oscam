@@ -19,14 +19,18 @@ namespace webapi
     [Route("api/Cliente")]
     public class ClienteController : Controller
     {
+        private Smtp smtp;
+        private Revendedor revendedor;
         private BancoContext db;
         private Servidor servidor;
-        protected ClaimsIdentity ClaimsIdentity => User.Identity as ClaimsIdentity;
-        protected Guid UserId => new Guid(ClaimsIdentity.FindFirst(ClaimTypes.NameIdentifier)?.Value.ToString());
-        public ClienteController(BancoContext db)
+        private Guid UserId;
+        public ClienteController(BancoContext db, IHttpContextAccessor httpContextAccessor)
         {
             this.db = db;
+            this.UserId = new Guid(httpContextAccessor.HttpContext.User.FindFirst(ClaimTypes.NameIdentifier).Value);
             this.servidor = db.Servidor.FirstOrDefault();
+            this.revendedor = db.Revendedor.SingleOrDefault(x => x.idUser == UserId);
+            this.smtp = db.Smtp.SingleOrDefault(x => x.id == revendedor.idSmtp);
         }
         // GET: api/Cliente
         [HttpGet]
@@ -52,10 +56,13 @@ namespace webapi
         [HttpPost]
         public IActionResult Post([FromBody]Cliente value)
         {
+            if (revendedor == null)
+            {
+                return StatusCode(404, Json(new { error = "Você nao possui perfil de revendedor, contate o Administrador" }));
+            }
             var transaction = db.Database.BeginTransaction();
             value.idUser = UserId;
             var reg = db.Cliente.SingleOrDefault(x => x.login == value.login);
-
             if (reg != null)
             {
                 return StatusCode(404, Json(new { error = "Login indisponível" }));
@@ -64,14 +71,8 @@ namespace webapi
             db.Cliente.Add(value);
             db.SaveChanges();
 
-            var revendedor = db.Revendedor.SingleOrDefault(x => x.idUser == UserId);
-            var smtp = db.Smtp.SingleOrDefault(x => x.id == revendedor.idSmtp);
-            
-            if (revendedor == null)
-            {
-                transaction.Rollback();
-                return StatusCode(404, Json(new { error = "Você nao possui perfil de revendedor, contate o Administrador" }));
-            }
+
+
             //inicio financeiro
 
             Financeiro financeiro = new Financeiro();
@@ -87,7 +88,7 @@ namespace webapi
             db.Financeiro.Add(financeiro);
             db.SaveChanges();
 
-            int result = Oscam.criarUsuarioAsync(value.login, value.senha, value.nome,servidor, Convert.ToInt16(value.ativo)).Result;
+            int result = Oscam.criarUsuarioAsync(value.login, value.senha, value.nome, servidor, Convert.ToInt16(value.ativo)).Result;
             if (result != 200)
             {
                 transaction.Rollback();
@@ -95,10 +96,13 @@ namespace webapi
             };
 
             transaction.Commit();
-            if (smtp != null) {
+            if (smtp != null)
+            {
                 var modeloemail = db.ModeloEmail.SingleOrDefault(x => x.tipo == (financeiro.valorLogin == 0 ? "ContaTeste" : "ContaAtiva"));
-                if (modeloemail != null) {
-                  var tmp =  SendMail.Send(new ConfEmailViewModel { 
+                if (modeloemail != null)
+                {
+                    var tmp = SendMail.Send(new ConfEmailViewModel
+                    {
                         ModeloEmail = modeloemail,
                         revendedor = revendedor,
                         smtp = smtp,
@@ -106,10 +110,11 @@ namespace webapi
                         Financeiro = financeiro,
                         servidor = servidor
                     });
-                    if (tmp.sucesso == false) {
-                        db.LogEventos.Add(new LogEventos { idUser= UserId, data = DateTime.Now, log = tmp.retorno});
+                    if (tmp.sucesso == false)
+                    {
+                        db.LogEventos.Add(new LogEventos { idUser = UserId, data = DateTime.Now, log = tmp.retorno });
                         db.SaveChanges();
-                        
+
                     }
                 }
             }
@@ -130,6 +135,10 @@ namespace webapi
             {
                 return StatusCode(404, Json(new { error = "Registro inexistente" }));
             }
+            if (revendedor == null)
+            {
+                return StatusCode(404, Json(new { error = "Você nao possui perfil de revendedor, contate o Administrador" }));
+            }
             if (id != null && (!cliente.teste && value.teste))
             {
                 return StatusCode(404, Json(new { error = "Uma conta ativa não pode ser transformada em teste" }));
@@ -144,7 +153,6 @@ namespace webapi
             {
                 return StatusCode(404, Json(new { error = "Login não pode ser alterado" }));
             }
-            var revendedor = db.Revendedor.SingleOrDefault(x => x.idUser == UserId);
             var data = value.teste ? DateTime.Now.AddDays(1) : Convert.ToDateTime(string.Format("{0}-{1}-{2}", DateTime.Now.Year, DateTime.Now.AddMonths(DateTime.Now.Date.Day >= revendedor.diaVencimento ? 1 : 0).Month, revendedor.diaVencimento));
             Financeiro financeiro = new Financeiro();
             financeiro.idCliente = value.id;
@@ -159,12 +167,28 @@ namespace webapi
             if (cliente.teste && !value.teste)
             {
 
-                if (revendedor == null)
+                if (smtp != null)
                 {
-                    return StatusCode(404, Json(new { error = "Você nao possui perfil de revendedor, contate o Administrador" }));
+                    var modeloemail = db.ModeloEmail.SingleOrDefault(x => x.tipo == (financeiro.valorLogin == 0 ? "ContaTeste" : "ContaAtivada"));
+                    if (modeloemail != null)
+                    {
+                        var tmp = SendMail.Send(new ConfEmailViewModel
+                        {
+                            ModeloEmail = modeloemail,
+                            revendedor = revendedor,
+                            smtp = smtp,
+                            cliente = value,
+                            Financeiro = financeiro,
+                            servidor = servidor
+                        });
+                        if (tmp.sucesso == false)
+                        {
+                            db.LogEventos.Add(new LogEventos { idUser = UserId, data = DateTime.Now, log = tmp.retorno });
+                            db.SaveChanges();
+
+                        }
+                    }
                 }
-
-
 
                 var check = db.Financeiro.Where(x => x.valorLogin == 0 && x.valorCobrado == 0 && x.idCliente == value.id).FirstOrDefault();
                 //verifica se ja tem cobrança para o mês
@@ -172,6 +196,7 @@ namespace webapi
                 if (check == null)
                 {
                     db.Financeiro.Add(financeiro);
+                    //aquiiiii
                 }
                 else
                 {
@@ -180,17 +205,18 @@ namespace webapi
                     db.Financeiro.Update(financeiro);
                 }
                 db.SaveChanges();
+
             }
             if (cliente.ativo == true && value.ativo == false)
             {
-                var check = db.Financeiro.Where(x => (x.dataVencimento.Month == data.Month) && ( x.dataVencimento.Year == data.Year) && (x.dataVencimento.Year == DateTime.Now.Year) && x.idCliente == value.id).FirstOrDefault();
+                var check = db.Financeiro.Where(x => (x.dataVencimento.Month == data.Month) && (x.dataVencimento.Year == data.Year) && (x.dataVencimento.Year == DateTime.Now.Year) && x.idCliente == value.id).FirstOrDefault();
                 if (check == null)
                 {
                     db.Financeiro.Add(financeiro);
                     db.SaveChanges();
                 }
             }
-            int result = Oscam.criarUsuarioAsync(value.login, value.senha, value.nome, servidor,Convert.ToInt16(value.ativo)).Result;
+            int result = Oscam.criarUsuarioAsync(value.login, value.senha, value.nome, servidor, Convert.ToInt16(value.ativo)).Result;
             if (result != 200)
             {
                 return StatusCode(404, Json(new { error = "Falha ao comunicar com servidor CAM, contate o Administrador" }));
@@ -213,7 +239,7 @@ namespace webapi
             }
             if (reg != null)
             {
-                int result = Oscam.deleteAsync(reg.login,servidor).Result;
+                int result = Oscam.deleteAsync(reg.login, servidor).Result;
                 if (result != 200)
                 {
                     return StatusCode(404, Json(new { error = "Falha ao comunicar com servidor CAM, contate o Administrador" }));
