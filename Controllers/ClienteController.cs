@@ -34,9 +34,16 @@ namespace webapi
         }
         // GET: api/Cliente
         [HttpGet]
-        public IQueryable<Cliente> Get()
+        public List<ClienteCanalViewModel> Get()
         {
-            return db.Cliente.Where(c => c.apagado == false && c.idUser == UserId);
+            var ew = Oscam.getCanais(servidor).Result.oscam;
+            List<ClienteCanalViewModel> coisa = (from c in db.Cliente
+                        join oscam in ew.status.client on c.login equals oscam.name_enc
+                        where c.apagado == false && c.idUser == UserId
+                        select new ClienteCanalViewModel() { Cliente = c, Canal = oscam.request.chname }).ToList()
+            ;
+            return coisa;
+            //return db.Cliente.Where(c => c.apagado == false && c.idUser == UserId);
         }
 
         // GET: api/Cliente/5
@@ -44,9 +51,10 @@ namespace webapi
         public IActionResult Get(Guid id)
         {
             Cliente cliente = db.Cliente.Find(id);
+            var ew = Oscam.getCanais(servidor);
             if (cliente == null || cliente.idUser != UserId)
             {
-                return StatusCode(404, Json(new { error = "Registro indisponível" }));
+                return StatusCode(500, Json(new { error = "Registro indisponível" }));
             }
 
             return Json(cliente);
@@ -58,14 +66,14 @@ namespace webapi
         {
             if (revendedor == null)
             {
-                return StatusCode(404, Json(new { error = "Você nao possui perfil de revendedor, contate o Administrador" }));
+                return StatusCode(500, Json(new { error = "Você nao possui perfil de revendedor, contate o Administrador" }));
             }
             var transaction = db.Database.BeginTransaction();
             value.idUser = UserId;
             var reg = db.Cliente.SingleOrDefault(x => x.login == value.login);
             if (reg != null)
             {
-                return StatusCode(404, Json(new { error = "Login indisponível" }));
+                return StatusCode(500, Json(new { error = "Login indisponível" }));
             }
             value.dataCriado = DateTime.Now;
             db.Cliente.Add(value);
@@ -92,7 +100,7 @@ namespace webapi
             if (result != 200)
             {
                 transaction.Rollback();
-                return StatusCode(404, Json(new { error = "Falha ao comunicar com servidor CAM, contate o Administrador" }));
+                return StatusCode(500, Json(new { error = "Falha ao comunicar com servidor CAM, contate o Administrador" }));
             };
 
             transaction.Commit();
@@ -133,25 +141,25 @@ namespace webapi
 
             if (cliente == null)
             {
-                return StatusCode(404, Json(new { error = "Registro inexistente" }));
+                return StatusCode(500, Json(new { error = "Registro inexistente" }));
             }
             if (revendedor == null)
             {
-                return StatusCode(404, Json(new { error = "Você nao possui perfil de revendedor, contate o Administrador" }));
+                return StatusCode(400, Json(new { error = "Você nao possui perfil de revendedor, contate o Administrador" }));
             }
             if (id != null && (!cliente.teste && value.teste))
             {
-                return StatusCode(404, Json(new { error = "Uma conta ativa não pode ser transformada em teste" }));
+                return StatusCode(500, Json(new { error = "Uma conta ativa não pode ser transformada em teste" }));
             }
             //se o cliente for teste e passar a ser cliente ativo, gera cobrança
 
             if (cliente.idUser != UserId)
             {
-                return StatusCode(404, Json(new { error = "Você não tem permissão para alterar esse registro" }));
+                return StatusCode(500, Json(new { error = "Você não tem permissão para alterar esse registro" }));
             }
             if (cliente.login != value.login)
             {
-                return StatusCode(404, Json(new { error = "Login não pode ser alterado" }));
+                return StatusCode(500, Json(new { error = "Login não pode ser alterado" }));
             }
             var data = value.teste ? DateTime.Now.AddDays(1) : Convert.ToDateTime(string.Format("{0}-{1}-{2}", DateTime.Now.Year, DateTime.Now.AddMonths(DateTime.Now.Date.Day >= revendedor.diaVencimento ? 1 : 0).Month, revendedor.diaVencimento));
             Financeiro financeiro = new Financeiro();
@@ -219,7 +227,7 @@ namespace webapi
             int result = Oscam.criarUsuarioAsync(value.login, value.senha, value.nome, servidor, Convert.ToInt16(value.ativo)).Result;
             if (result != 200)
             {
-                return StatusCode(404, Json(new { error = "Falha ao comunicar com servidor CAM, contate o Administrador" }));
+                return StatusCode(500, Json(new { error = "Falha ao comunicar com servidor CAM, contate o Administrador" }));
             };
 
             db.Entry(cliente).State = EntityState.Detached;
@@ -235,14 +243,14 @@ namespace webapi
             var reg = db.Cliente.SingleOrDefault(x => x.id == id);
             if (reg.idUser != UserId)
             {
-                return StatusCode(404, Json(new { error = "Você não tem permissão para remover este registro" }));
+                return StatusCode(500, Json(new { error = "Você não tem permissão para remover este registro" }));
             }
             if (reg != null)
             {
                 int result = Oscam.deleteAsync(reg.login, servidor).Result;
                 if (result != 200)
                 {
-                    return StatusCode(404, Json(new { error = "Falha ao comunicar com servidor CAM, contate o Administrador" }));
+                    return StatusCode(500, Json(new { error = "Falha ao comunicar com servidor CAM, contate o Administrador" }));
                 };
                 // db.Cliente.Remove(reg);
                 reg.ativo = false;
@@ -255,7 +263,7 @@ namespace webapi
             }
             else
             {
-                return StatusCode(404, Json(new { error = "Registro inexistente" }));
+                return StatusCode(500, Json(new { error = "Registro inexistente" }));
             }
         }
     }

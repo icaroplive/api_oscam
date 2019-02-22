@@ -10,6 +10,7 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Configuration;
 using Microsoft.IdentityModel.Tokens;
+using Newtonsoft.Json;
 
 namespace webapi.Controllers
 {
@@ -39,10 +40,11 @@ namespace webapi.Controllers
             if (result.Succeeded)
             {
                 var appUser = _userManager.Users.SingleOrDefault(r => r.Email == model.Email);
-                return await GenerateJwtToken(model.Email, appUser);
+                return Json( new { token = await GenerateJwtToken(model.Email, appUser) } );
+                //return await GenerateJwtToken(model.Email, appUser);
             }
-            
-            throw new ApplicationException("INVALID_LOGIN_ATTEMPT");
+            return StatusCode(403, JsonConvert.SerializeObject(result));
+            //throw new ApplicationException("INVALID_LOGIN_ATTEMPT");
         }
        
         [HttpPost]
