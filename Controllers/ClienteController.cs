@@ -36,11 +36,12 @@ namespace webapi
         [HttpGet]
         public List<ClienteCanalViewModel> Get()
         {
-            var ew = Oscam.getCanais(servidor).Result.oscam;
+            var canais = Oscam.getCanais(servidor).Result.oscam.status.client;
             List<ClienteCanalViewModel> coisa = (from c in db.Cliente
-                        join oscam in ew.status.client on c.login equals oscam.name_enc
+                        join oscam in canais on  c.login equals oscam.name_enc into cc
+                         from oscam in cc.DefaultIfEmpty()
                         where c.apagado == false && c.idUser == UserId
-                        select new ClienteCanalViewModel() { Cliente = c, Canal = oscam.request.chname }).ToList()
+                        select new ClienteCanalViewModel() { Cliente = c, Canal = oscam.request == null ? "offline" : oscam.request.chname }).ToList()
             ;
             return coisa;
             //return db.Cliente.Where(c => c.apagado == false && c.idUser == UserId);
