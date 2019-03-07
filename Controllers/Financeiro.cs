@@ -28,7 +28,7 @@ namespace webapi
         [HttpGet]
         public IQueryable<Financeiro> Get()
         {
-            return db.Financeiro;
+            return db.Financeiro.Where(f => f.idUser == UserId);
         }
 
         // GET: api/Financeiro/5
