@@ -5,6 +5,8 @@ using System.IdentityModel.Tokens.Jwt;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using Hangfire;
+using Hangfire.MySql.Core;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
@@ -17,6 +19,7 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
 using webapi.Entities;
+using webapi.Services;
 
 namespace webapi
 {
@@ -32,8 +35,13 @@ namespace webapi
         // This method gets called by the runtime. Use this method to add services to the container.
         public void ConfigureServices(IServiceCollection services)
         {
+            JobStorage.Current = new MySqlStorage(Configuration.GetConnectionString("DefaultConnection"));
             services.AddDbContext<ApplicationDbContext>(options => options.UseMySql(Configuration.GetConnectionString("DefaultConnection")));
             services.AddDbContext<BancoContext>(options => options.UseLazyLoadingProxies().UseMySql(Configuration.GetConnectionString("DefaultConnection")));
+            services.AddHangfire(config =>
+                config.UseStorage(new MySqlStorage(Configuration.GetConnectionString("DefaultConnection")))
+             );
+            RecurringJob.AddOrUpdate<LacamentoMensal> ("lançamentos",t => t.lancar() , "* * 1 * *");
             services.AddIdentity<IdentityUser, IdentityRole>()
                 .AddEntityFrameworkStores<ApplicationDbContext>()
                 .AddDefaultTokenProviders();
@@ -70,8 +78,13 @@ namespace webapi
         }
 
         // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.
-        public void Configure(IApplicationBuilder app, IHostingEnvironment env, ApplicationDbContext dbContext)
+        public void Configure(IApplicationBuilder app,
+         IHostingEnvironment env,
+         ILoggerFactory loggerFactory,
+         ApplicationDbContext dbContext)
         {
+            app.UseHangfireDashboard();
+            app.UseHangfireServer();
             if (env.IsDevelopment())
             {
                 app.UseDeveloperExceptionPage();
