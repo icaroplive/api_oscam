@@ -45,7 +45,7 @@ namespace webapi.Models
             var answer = httpClient.GetAsync(new Uri(String.Format("{0}/oscamapi.json?part=status",servidor.servidorCam))).Result;
             
             var ewew=answer.Content.ReadAsStringAsync().Result;
-            var xpxp = string.Join(" ", Regex.Split(ewew, @"(?:\r\n|\n|\r|\t)"));
+            var xpxp = string.Join(" ", Regex.Split(ewew, @"(?:\r\n|\n|\r|\t|/\/)"));
 
 
 
